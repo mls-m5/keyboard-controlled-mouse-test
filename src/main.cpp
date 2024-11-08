@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-constexpr int NUM_BOXES = 10;
-constexpr int BOX_SIZE = 20;
-constexpr int SLOW_SPEED = 1;
-constexpr int NORMAL_SPEED = 4 * SLOW_SPEED;
-constexpr int FAST_SPEED = 40 * SLOW_SPEED;
+constexpr int numBoxes = 10;
+constexpr int boxSize = 20;
+constexpr int slowSpeed = 2;
+constexpr int normalSpeed = 4 * slowSpeed;
+constexpr int fastSpeed = 20 * slowSpeed;
+constexpr float alpha = 0.3f; // Smoothing factor for IIR filter
 
 typedef struct {
     int x;
@@ -60,16 +61,20 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     // Create random positions for boxes
-    Coordinates boxes[NUM_BOXES];
-    for (int i = 0; i < NUM_BOXES; i++) {
-        boxes[i].x = rand() % (displayMode.w - BOX_SIZE);
-        boxes[i].y = rand() % (displayMode.h - BOX_SIZE);
+    Coordinates boxes[numBoxes];
+    for (int i = 0; i < numBoxes; i++) {
+        boxes[i].x = rand() % (displayMode.w - boxSize);
+        boxes[i].y = rand() % (displayMode.h - boxSize);
     }
 
     // Set up a timer to run at 60 Hz
     const int frameDelay = 1000 / 60;
     Uint32 frameStart;
     int frameTime;
+
+    // Initialize the speed multiplier and target speed
+    float speedMultiplier = normalSpeed;
+    float targetSpeedMultiplier = normalSpeed;
 
     // Main loop to keep the window open
     int running = 1;
@@ -86,25 +91,32 @@ int main(int argc, char *argv[]) {
 
         // Get the state of the keyboard
         const Uint8 *state = SDL_GetKeyboardState(NULL);
-        int speedMultiplier = NORMAL_SPEED;
         if (state[SDL_SCANCODE_LSHIFT]) {
-            speedMultiplier = FAST_SPEED;
+            targetSpeedMultiplier = fastSpeed;
         }
         else if (state[SDL_SCANCODE_LCTRL]) {
-            speedMultiplier = SLOW_SPEED;
+            targetSpeedMultiplier = slowSpeed;
+        }
+        else {
+            targetSpeedMultiplier = normalSpeed;
         }
 
+        // Apply IIR filter to smooth the speed multiplier
+        speedMultiplier =
+            alpha * targetSpeedMultiplier + (1 - alpha) * speedMultiplier;
+
+        // Update coordinates based on filtered speed multiplier
         if (state[SDL_SCANCODE_UP]) {
-            coords.y -= speedMultiplier;
+            coords.y -= static_cast<int>(speedMultiplier);
         }
         if (state[SDL_SCANCODE_DOWN]) {
-            coords.y += speedMultiplier;
+            coords.y += static_cast<int>(speedMultiplier);
         }
         if (state[SDL_SCANCODE_LEFT]) {
-            coords.x -= speedMultiplier;
+            coords.x -= static_cast<int>(speedMultiplier);
         }
         if (state[SDL_SCANCODE_RIGHT]) {
-            coords.x += speedMultiplier;
+            coords.x += static_cast<int>(speedMultiplier);
         }
 
         // Get the current mouse position
@@ -124,8 +136,8 @@ int main(int argc, char *argv[]) {
 
         // Draw the boxes
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        for (int i = 0; i < NUM_BOXES; i++) {
-            SDL_Rect box = {boxes[i].x, boxes[i].y, BOX_SIZE, BOX_SIZE};
+        for (int i = 0; i < numBoxes; i++) {
+            SDL_Rect box = {boxes[i].x, boxes[i].y, boxSize, boxSize};
             SDL_RenderFillRect(renderer, &box);
         }
 
