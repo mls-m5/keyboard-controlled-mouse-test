@@ -1,5 +1,10 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define NUM_BOXES 10
+#define BOX_SIZE 20
 
 typedef struct {
     int x;
@@ -35,8 +40,28 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Create an SDL renderer
+    SDL_Renderer *renderer =
+        SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == NULL) {
+        printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
     // Initialize coordinates
     Coordinates coords = {0, 0};
+
+    // Initialize random seed
+    srand(time(NULL));
+
+    // Create random positions for boxes
+    Coordinates boxes[NUM_BOXES];
+    for (int i = 0; i < NUM_BOXES; i++) {
+        boxes[i].x = rand() % (displayMode.w - BOX_SIZE);
+        boxes[i].y = rand() % (displayMode.h - BOX_SIZE);
+    }
 
     // Set up a timer to run at 60 Hz
     const int frameDelay = 1000 / 60;
@@ -44,45 +69,31 @@ int main(int argc, char *argv[]) {
     int frameTime;
 
     // Main loop to keep the window open
-    SDL_Event event;
     int running = 1;
     while (running) {
         frameStart = SDL_GetTicks();
 
+        // Handle events
+        SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = 0;
             }
-            else if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
-                case SDLK_UP:
-                    coords.y -= 1;
-                    printf("Arrow Up Pressed: Coordinates (%d, %d)\n",
-                           coords.x,
-                           coords.y);
-                    break;
-                case SDLK_DOWN:
-                    coords.y += 1;
-                    printf("Arrow Down Pressed: Coordinates (%d, %d)\n",
-                           coords.x,
-                           coords.y);
-                    break;
-                case SDLK_LEFT:
-                    coords.x -= 1;
-                    printf("Arrow Left Pressed: Coordinates (%d, %d)\n",
-                           coords.x,
-                           coords.y);
-                    break;
-                case SDLK_RIGHT:
-                    coords.x += 1;
-                    printf("Arrow Right Pressed: Coordinates (%d, %d)\n",
-                           coords.x,
-                           coords.y);
-                    break;
-                default:
-                    break;
-                }
-            }
+        }
+
+        // Get the state of the keyboard
+        const Uint8 *state = SDL_GetKeyboardState(NULL);
+        if (state[SDL_SCANCODE_UP]) {
+            coords.y -= 1;
+        }
+        if (state[SDL_SCANCODE_DOWN]) {
+            coords.y += 1;
+        }
+        if (state[SDL_SCANCODE_LEFT]) {
+            coords.x -= 1;
+        }
+        if (state[SDL_SCANCODE_RIGHT]) {
+            coords.x += 1;
         }
 
         // Get the current mouse position
@@ -92,7 +103,23 @@ int main(int argc, char *argv[]) {
         // Update the mouse position based on coordinates
         mouseX += coords.x;
         mouseY += coords.y;
+        coords.x = 0;
+        coords.y = 0;
         SDL_WarpMouseInWindow(window, mouseX, mouseY);
+
+        // Clear the screen
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        // Draw the boxes
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        for (int i = 0; i < NUM_BOXES; i++) {
+            SDL_Rect box = {boxes[i].x, boxes[i].y, BOX_SIZE, BOX_SIZE};
+            SDL_RenderFillRect(renderer, &box);
+        }
+
+        // Present the renderer
+        SDL_RenderPresent(renderer);
 
         // Cap the frame rate to 60 Hz
         frameTime = SDL_GetTicks() - frameStart;
@@ -102,6 +129,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Clean up and close the SDL window
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
