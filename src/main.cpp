@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define NUM_BOXES 10
-#define BOX_SIZE 20
+constexpr int NUM_BOXES = 10;
+constexpr int BOX_SIZE = 20;
+constexpr int SLOW_SPEED = 1;
+constexpr int NORMAL_SPEED = 4 * SLOW_SPEED;
+constexpr int FAST_SPEED = 40 * SLOW_SPEED;
 
 typedef struct {
     int x;
@@ -83,17 +86,25 @@ int main(int argc, char *argv[]) {
 
         // Get the state of the keyboard
         const Uint8 *state = SDL_GetKeyboardState(NULL);
+        int speedMultiplier = NORMAL_SPEED;
+        if (state[SDL_SCANCODE_LSHIFT]) {
+            speedMultiplier = FAST_SPEED;
+        }
+        else if (state[SDL_SCANCODE_LCTRL]) {
+            speedMultiplier = SLOW_SPEED;
+        }
+
         if (state[SDL_SCANCODE_UP]) {
-            coords.y -= 1;
+            coords.y -= speedMultiplier;
         }
         if (state[SDL_SCANCODE_DOWN]) {
-            coords.y += 1;
+            coords.y += speedMultiplier;
         }
         if (state[SDL_SCANCODE_LEFT]) {
-            coords.x -= 1;
+            coords.x -= speedMultiplier;
         }
         if (state[SDL_SCANCODE_RIGHT]) {
-            coords.x += 1;
+            coords.x += speedMultiplier;
         }
 
         // Get the current mouse position
